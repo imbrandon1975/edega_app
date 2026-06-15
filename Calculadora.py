@@ -34,7 +34,7 @@ with col_izquierda:
     st.subheader("🛠️ Configuración de utilidad")
     
     # Base: Costo del producto
-    costo = st.number_input("Costo por unidad ($)", min_value=0.0, max_value=20000.0, value=1825.0, step=100.0)
+    costo = st.number_input("Costo por unidad ($)", min_value=0.0, max_value=20000.0, value=1625.0, step=100.0)
     
     st.write("---")
     # Selector de modalidad para definir el precio
@@ -46,12 +46,12 @@ with col_izquierda:
     
     # Lógica dinámica según la selección del usuario
     if modo_precio == "Precio Publico manual":
-        precio = st.number_input("Precio Publico Sugerido ($)", min_value=0.0, max_value=20000.0, value=3650.0, step=100.0)
+        precio = st.number_input("Precio Publico Sugerido ($)", min_value=0.0, max_value=20000.0, value=3250.0, step=100.0)
         if costo > 0:
             margen_calculado = ((precio - costo) / costo) * 100
             st.info(f"Margen obtenido: {margen_calculado:.1f}% sobre el costo.")
     else:
-        margen_porcentaje = st.number_input("Margen deseado (%)", min_value=0.0, max_value=1000.0, value=140.0, step=5.0)
+        margen_porcentaje = st.number_input("Margen deseado (%)", min_value=0.0, max_value=1000.0, value=100.0, step=5.0)
         precio = costo * (1 + (margen_porcentaje / 100))
         st.success(f"Precio calculated automáticamente: ${precio:,.2f}")
     
@@ -79,33 +79,32 @@ with col_derecha:
         # Definición de los escenarios de unidades
         unidades = [10, 30, 50, 100, 200, 300]
         
-        # Generar el DataFrame base limpio en cada ejecución
+        # 1. Generar DataFrame con la utilidad base por el volumen vendido
         df = pd.DataFrame({
             "Unidades": [str(u) for u in unidades],
             "Utilidad Base": [u * utilidad_unitaria for u in unidades]
         })
         
-        # Calcular las proyecciones y definir la columna activa (y_column)
+        # 2. LÓGICA CORREGIDA: Calcular TODAS las columnas de forma matemática absoluta
+        df["Proyección Semanal"] = df["Utilidad Base"]
+        df["Proyección Mensual"] = df["Utilidad Base"] * 4
+        df["Proyección Anual"] = df["Utilidad Base"] * 52
+        
+        # 3. Asignar la columna activa según el switch del usuario
         if temporalidad == "Semanal":
-            df["Proyección Semanal"] = df["Utilidad Base"]
-            df["Proyección Mensual"] = df["Utilidad Base"] * 4
-            df["Proyección Anual"] = df["Utilidad Base"] * 52
             y_column = "Proyección Semanal"
         elif temporalidad == "Mensual":
-            df["Proyección Mensual"] = df["Utilidad Base"]
-            df["Proyección Anual"] = df["Utilidad Base"] * 12
             y_column = "Proyección Mensual"
-        else: # Anual
-            df["Proyección Anual"] = df["Utilidad Base"]
+        else:
             y_column = "Proyección Anual"
             
-        # Extraemos los valores numéricos actuales en una lista limpia para evitar conflictos de caché en Plotly
+        # Extraemos los valores numéricos correctos y escalados para Plotly
         valores_actuales = df[y_column].tolist()
         
-        # Formateo de la tabla nativa para visualización limpia
+        # Formateo de la tabla nativa para visualización limpia en pantalla
         df_display = df.copy()
         df_display = df_display.drop(columns=["Utilidad Base"])
-        columnas_moneda = [col for col in df_display.columns if "Proyección" in col]
+        columnas_moneda = ["Proyección Semanal", "Proyección Mensual", "Proyección Anual"]
         for col in columnas_moneda:
             df_display[col] = df_display[col].apply(lambda x: f"${x:,.2f}")
             
@@ -114,12 +113,12 @@ with col_derecha:
         
         st.divider()
         
-        # --- SELECTOR DE TIPO DE GRÁFICO (Sin línea temporal) ---
+        # --- SELECTOR DE TIPO DE GRÁFICO ---
         tipo_grafico = st.selectbox(
             "Visualización estratégica del gráfico:",
             [
                 "Gráfico de Cascada (Ganancia Acumulada)", 
-                "Gráfico de Barras Original", 
+                "Gráfico de Barras", 
                 "Gráfico de Área (Crecimiento Orgánico)"
             ],
             index=0
@@ -127,7 +126,7 @@ with col_derecha:
         
         st.markdown(f"#### Comportamiento de tu Utilidad ({temporalidad})")
         
-        # PALETA REORDENADA (Priorizando el azul corporativo de Edega)
+        # PALETA CORPORATIVA (Priorizando el azul de Edega)
         color_edega_azul = "#0E5EB9"      # Azul Principal Edega
         color_edega_oscuro = "#0D2C41"    # Azul Oscuro
         color_edega_gris = "#878787"      # Gris
@@ -142,10 +141,9 @@ with col_derecha:
             color_edega_carbon
         ]
         
-        # Forzamos la creación de una figura completamente nueva en blanco
         fig = go.Figure()
         
-        # OP-1: GRÁFICO DE CASCADA (Predeterminado)
+        # OP-1: GRÁFICO DE CASCADA (Calculado dinámicamente con valores_actuales)
         if tipo_grafico == "Gráfico de Cascada (Ganancia Acumulada)":
             valores_cascada = []
             for i in range(len(valores_actuales)):
@@ -174,7 +172,7 @@ with col_derecha:
             )
 
         # OP-2: GRÁFICO DE BARRAS ORIGINAL
-        elif tipo_grafico == "Gráfico de Barras Original":
+        elif tipo_grafico == "Gráfico de Barras":
             fig.add_trace(go.Bar(
                 x=df["Unidades"],
                 y=valores_actuales,
@@ -190,7 +188,7 @@ with col_derecha:
                 showlegend=False
             )
 
-         # OP-3: GRÁFICO DE ÁREA ACUMULADA
+        # OP-3: GRÁFICO DE ÁREA ACUMULADA
         else:
             fig.add_trace(go.Scatter(
                 x=df["Unidades"],
@@ -211,4 +209,5 @@ with col_derecha:
                 showlegend=False
             )
         
-        st.plotly_chart(fig, use_container_width=True)
+        # Renderizado final con la clave dinámica para limpiar la caché visual
+        st.plotly_chart(fig, use_container_width=True, key=f"grafico_{temporalidad}_{tipo_grafico}")
