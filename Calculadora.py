@@ -9,7 +9,7 @@ st.set_page_config(page_title="Calculadora de Proyección Multi-Producto Edega",
 
 # --- ENCABEZADO CON LOGO Y TÍTULOS ORIGINALES ---
 ruta_logo = "edega logo.png"
-col_logo, col_titulo = st.columns([1.5, 6.5])
+col_logo, col_titulo = st.columns([1, 7])
 
 with col_logo:
     if os.path.exists(ruta_logo):
