@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import plotly.graph_objects as go
 from PIL import Image
 import os
 
@@ -31,31 +31,29 @@ col_izquierda, col_derecha = st.columns([1, 2], gap="large")
 
 # --- COLUMNA IZQUIERDA: Controles e Inputs ---
 with col_izquierda:
-    st.subheader("🛠️ Configuración de precio")
+    st.subheader("🛠️ Configuración de utilidad")
     
     # Base: Costo del producto
-    costo = st.number_input("Costo por unidad ($)", min_value=0.0, max_value=20000.0, value=500.0, step=100.0)
+    costo = st.number_input("Costo por unidad ($)", min_value=0.0, max_value=20000.0, value=1825.0, step=100.0)
     
     st.write("---")
     # Selector de modalidad para definir el precio
     modo_precio = st.radio(
         "Definir precio mediante:",
-        ["Precio de venta manual", "Margen de ganancia (%) sobre costo"],
+        ["Precio Publico manual", "Margen de ganancia (%) sobre costo"],
         horizontal=False
     )
     
     # Lógica dinámica según la selección del usuario
-    if modo_precio == "Precio de venta manual":
-        precio = st.number_input("Precio de venta sugerido ($)", min_value=0.0, max_value=20000.0, value=1200.0, step=100.0)
-        # Calcular el margen resultante para mostrarlo informativamente
+    if modo_precio == "Precio Publico manual":
+        precio = st.number_input("Precio Publico Sugerido ($)", min_value=0.0, max_value=20000.0, value=3650.0, step=100.0)
         if costo > 0:
             margen_calculado = ((precio - costo) / costo) * 100
             st.info(f"Margen obtenido: {margen_calculado:.1f}% sobre el costo.")
     else:
         margen_porcentaje = st.number_input("Margen deseado (%)", min_value=0.0, max_value=1000.0, value=140.0, step=5.0)
-        # Calcular el precio automáticamente con base en el costo y el margen %
         precio = costo * (1 + (margen_porcentaje / 100))
-        st.success(f"Precio calculado automáticamente: ${precio:,.2f}")
+        st.success(f"Precio calculated automáticamente: ${precio:,.2f}")
     
     st.write("---")
     
@@ -76,18 +74,18 @@ with col_derecha:
     if utilidad_unitaria <= 0:
         st.error("El precio de venta debe ser mayor al costo para generar utilidad. Ajusta los valores en el panel izquierdo.")
     else:
-        st.subheader("📊 Resultados de tu Proyección")
+        st.subheader("📊 Proyección de Utilidades")
         
         # Definición de los escenarios de unidades
         unidades = [10, 30, 50, 100, 200, 300]
         
-        # Generar el DataFrame base
+        # Generar el DataFrame base limpio en cada ejecución
         df = pd.DataFrame({
             "Unidades": [str(u) for u in unidades],
             "Utilidad Base": [u * utilidad_unitaria for u in unidades]
         })
         
-        # Calcular las proyecciones según la temporalidad seleccionada
+        # Calcular las proyecciones y definir la columna activa (y_column)
         if temporalidad == "Semanal":
             df["Proyección Semanal"] = df["Utilidad Base"]
             df["Proyección Mensual"] = df["Utilidad Base"] * 4
@@ -101,40 +99,116 @@ with col_derecha:
             df["Proyección Anual"] = df["Utilidad Base"]
             y_column = "Proyección Anual"
             
-        # Formateo de la tabla para visualización limpia
+        # Extraemos los valores numéricos actuales en una lista limpia para evitar conflictos de caché en Plotly
+        valores_actuales = df[y_column].tolist()
+        
+        # Formateo de la tabla nativa para visualización limpia
         df_display = df.copy()
+        df_display = df_display.drop(columns=["Utilidad Base"])
         columnas_moneda = [col for col in df_display.columns if "Proyección" in col]
         for col in columnas_moneda:
             df_display[col] = df_display[col].apply(lambda x: f"${x:,.2f}")
             
-        # Mostrar la tabla de datos numéricos
-        st.dataframe(df_display.drop(columns=["Utilidad Base"]), hide_index=True, use_container_width=True)
+        # Mostrar la tabla estándar de Streamlit
+        st.dataframe(df_display, hide_index=True, use_container_width=True)
         
         st.divider()
         
-        # Gráfico interactivo con Plotly (Barras con colores corporativos)
+        # --- SELECTOR DE TIPO DE GRÁFICO (Sin línea temporal) ---
+        tipo_grafico = st.selectbox(
+            "Visualización estratégica del gráfico:",
+            [
+                "Gráfico de Cascada (Ganancia Acumulada)", 
+                "Gráfico de Barras Original", 
+                "Gráfico de Área (Crecimiento Orgánico)"
+            ],
+            index=0
+        )
+        
         st.markdown(f"#### Comportamiento de tu Utilidad ({temporalidad})")
         
-        paleta_edega = ["#0E5EB9", "#878787", "#0D2C41", "#DADADA", "#7B7B7B"]
+        # PALETA REORDENADA (Priorizando el azul corporativo de Edega)
+        color_edega_azul = "#0E5EB9"      # Azul Principal Edega
+        color_edega_oscuro = "#0D2C41"    # Azul Oscuro
+        color_edega_gris = "#878787"      # Gris
+        color_edega_carbon = "#333333"    # Carbón
         
-        fig = px.bar(
-            df,
-            x="Unidades",
-            y=y_column,
-            text=y_column,
-            labels={"Unidades": "Unidades Vendidas", y_column: f"Utilidad {temporalidad} ($)"},
-            color="Unidades",
-            color_discrete_sequence=paleta_edega
-        )
+        paleta_priorizada = [
+            color_edega_azul,
+            color_edega_oscuro,
+            color_edega_azul,
+            color_edega_gris,
+            color_edega_azul,
+            color_edega_carbon
+        ]
         
-        fig.update_layout(
-            xaxis=dict(type='category'),
-            uniformtext_minsize=8, 
-            uniformtext_mode='hide', 
-            showlegend=False,
-            margin=dict(t=20, b=20, l=20, r=20)
-        )
+        # Forzamos la creación de una figura completamente nueva en blanco
+        fig = go.Figure()
         
-        fig.update_traces(texttemplate='$%{text:,.2s}', textposition='outside')
+        # OP-1: GRÁFICO DE CASCADA (Predeterminado)
+        if tipo_grafico == "Gráfico de Cascada (Ganancia Acumulada)":
+            valores_cascada = []
+            for i in range(len(valores_actuales)):
+                if i == 0:
+                    valores_cascada.append(valores_actuales[i])
+                else:
+                    valores_cascada.append(valores_actuales[i] - valores_actuales[i-1])
+            
+            fig.add_trace(go.Waterfall(
+                name="Incremento",
+                orientation="v",
+                measure=["relative"] * len(df),
+                x=df["Unidades"],
+                textposition="outside",
+                text=valores_actuales, 
+                texttemplate='$%{text:,.2s}',
+                y=valores_cascada,
+                increasing=dict(marker=dict(color=color_edega_azul)),
+                connector=dict(line=dict(color=color_edega_gris, width=1, dash="dot"))
+            ))
+            fig.update_layout(
+                xaxis=dict(type='category', title="Escalas de Unidades"),
+                yaxis=dict(title=f"Utilidad Acumulada {temporalidad} ($)"),
+                margin=dict(t=20, b=20, l=20, r=20),
+                showlegend=False
+            )
+
+        # OP-2: GRÁFICO DE BARRAS ORIGINAL
+        elif tipo_grafico == "Gráfico de Barras Original":
+            fig.add_trace(go.Bar(
+                x=df["Unidades"],
+                y=valores_actuales,
+                text=valores_actuales,
+                texttemplate='$%{text:,.2s}',
+                textposition='outside',
+                marker_color=paleta_priorizada[:len(df)]
+            ))
+            fig.update_layout(
+                xaxis=dict(type='category', title="Unidades Vendidas"),
+                yaxis=dict(title=f"Utilidad {temporalidad} ($)", showgrid=True),
+                margin=dict(t=20, b=20, l=20, r=20),
+                showlegend=False
+            )
+
+         # OP-3: GRÁFICO DE ÁREA ACUMULADA
+        else:
+            fig.add_trace(go.Scatter(
+                x=df["Unidades"],
+                y=valores_actuales,
+                mode='lines+markers+text',
+                text=valores_actuales,
+                texttemplate='$%{text:,.2s}',
+                textposition='top center',
+                fill='tozeroy', 
+                fillcolor='rgba(14, 94, 185, 0.25)', 
+                line=dict(color=color_edega_azul, width=4), 
+                marker=dict(size=10, color=color_edega_oscuro)
+            ))
+            fig.update_layout(
+                xaxis=dict(type='category', title="Unidades Vendidas"),
+                yaxis=dict(title=f"Progreso de Utilidad {temporalidad} ($)", showgrid=True),
+                margin=dict(t=30, b=20, l=20, r=20),
+                showlegend=False
+            )
         
         st.plotly_chart(fig, use_container_width=True)
