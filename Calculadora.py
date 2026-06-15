@@ -194,7 +194,6 @@ with col_derecha:
         [
             "Gráfico de Cascada (Ganancia Acumulada)", 
             "Gráfico de Barras Original", 
-            "Gráfico de Pirámide (Metas de Distribución)", 
             "Gráfico de Área (Crecimiento Orgánico)"
         ], index=0
     )
@@ -244,20 +243,7 @@ with col_derecha:
             xaxis=dict(type='category', title="Unidades Vendidas"),
             yaxis=dict(title="Utilidad ($)", showgrid=True),
         )
-
-    # OP-3: GRÁFICO DE PIRÁMIDE (FUNNEL)
-    elif tipo_grafico == "Gráfico de Pirámide (Metas de Distribución)":
-        fig.add_trace(go.Funnel(
-            y=df["Unidades"], x=valores_actuales,
-            textinfo="value", texttemplate='$%{value:,.2s}',
-            marker=dict(color=paleta_priorizada[:len(df)])
-        ))
-        fig.update_layout(
-            yaxis=dict(title="Nivel por Unidades"),
-            xaxis=dict(title="Utilidad ($)"),
-        )
-
-    # OP-4: GRÁFICO DE ÁREA ACUMULADA
+    # OP-3: GRÁFICO DE ÁREA ACUMULADA
     else:
         fig.add_trace(go.Scatter(
             x=df["Unidades"], y=valores_actuales,
