@@ -8,7 +8,7 @@ import os
 st.set_page_config(page_title="Calculadora de Proyección de Ventas", layout="wide")
 
 # --- ENCABEZADO CON LOGO DE FORMA HORIZONTAL ---
-ruta_logo = r"C:\Users\1975h\OneDrive\Escritorio\Python\Proyectos\edega logo.png"
+ruta_logo = "edega logo.png"
 
 col_logo, col_titulo = st.columns([1, 7])
 
