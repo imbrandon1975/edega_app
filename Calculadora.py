@@ -29,7 +29,7 @@ st.divider()
 col_izquierda, col_derecha = st.columns([1, 2], gap="large")
 
 # Definición global de los escenarios de unidades
-unidades = [10, 30, 50, 100, 200, 300]
+unidades = [3, 5, 10, 30, 50, 100, 200, 300]
 
 # --- COLUMNA IZQUIERDA: Configuración de los 5 Productos ---
 with col_izquierda:
